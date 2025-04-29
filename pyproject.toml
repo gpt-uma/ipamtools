@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ipamtools"
+version = "0.1.0"
+description = "A set of command line tools that interact with to phpIPAM service."
+readme = "README.md"
+keywords = ["IPAM", "phpIPAM", "IP address scanner", "nmap"]
+authors = [
+    {name = "Guillermo Pérez Trabado", email = "guille@ac.uma.es"},
+]
+classifiers = [
+    # How mature is this project? Common values are
+    #   3 - Alpha
+    #   4 - Beta
+    #   5 - Production/Stable
+    "Development Status :: 4 - Beta",
+    # Indicate who your project is intended for
+    "Intended Audience :: System Managers",
+    # Specify the Python versions you support here.
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.9.2"
+dependencies = [
+    "phpypamobjects>=0.1.9"
+]
+license =  "MIT"
+license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://github.com/gpt-uma/ipamtools"
+Documentation = "https://github.com/gpt-uma/ipamtools/blob/main/README.md"
+Repository = "https://github.com/gpt-uma/ipamtools.git"
+Issues = "https://github.com/gpt-uma/ipamtools/issues"
+
+[project.scripts]
+ipamscanagent = "ipamtools.ipamScanAgent:main"
+ipam2text     = "ipamtools.ipam2text:main"
