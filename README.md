@@ -1,113 +1,108 @@
-# PHPYPAMOBJECTS
+# IPAMTOOLS
 
-A high level API client library for phpIPAM written in Python.
+A set of command line tools that interact with to phpIPAM service
 
 ## Description
-This library is a wrapper around the phpypam library, which is a Python client for the phpIPAM API. It provides a higher-level interface to interact with phpIPAM, making it easier to work with IP address management tasks.
-The library is designed to simplify the process of managing IP addresses, subnets, and other related tasks in phpIPAM. It provides a set of classes and methods that abstract away the complexities of the underlying API, allowing developers to focus on their specific use cases.
-The library includes features such as:
-- Simplified connection to a phpIPAM service.
-- Simplified methods for creating, retrieving, and updating IP addresses, subnets and other objects from phpIPAM.
-- Simple object-oriented interface with methods for common tasks on IP addresses and subnets.
-- Support for retrieval of IP addresses and networks from phpIPAM service, such as searching by IP address, subnet, hostname or subnet address range.
-- Support for IPv4 and IPv6 addresses.
-- Handling and logging of errors and exceptions.
-- Support for timestamping of changes for subnets and addresses.
-- Support for allocation of free IP addresses from subnets selecting algorithms managing fragmentation of ranges of free addresses (best-fit, first-fit, and worst-fit).
-- Implements some form of protection against the scanning agent updating or deleting some special addresses (base address, broadcast address, router address) in subnets.
 
-## Requirements
-- Python 3.12 or higher (it uses python typing features)
-- phpypam library
-## Installation
+This project provides some tools that help interacting with the IPAM server from command line. Current tools include:
+- `ipamScanAgent`: A scanning agent able to connect to phpIPAM service and scan a set of networks assigned to it. Address scanning is implemented using the nmap tool.
+- `ipam2text`: A client to dump as a plain text list the whole list of subnets and addresses of a phpIPAM service.
+
+### Requirements
+- **Python 3.9.2** or higher (it uses python typing features)
+- **setuptools** library.
+
+### Installation
+
+**ipamtools** is distributed as a standard Python project. It is installed with `pip` in the same way as a standard Python package.
 
 ```bash
-pip install phpypamobjects
+pip install ipamtools
 ```
 ## Usage
 
-```python
-
-from phpypamobjects import ipamServer
-# This is not needed, but maybe you want to do IP address manipulation
-from ipaddress import ip_address, IPv4Address, IPv6Address
-# Just for pattern matching names in the example
-import re
-
-# Connect the service
-ipam = ipamServer(
-    url='https://myphpipam.example.com',
-    app_id='myipamclient',
-    token='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-    user='myipamuser',
-    password='ppppppppppppppppppppp'
-)
-
-# Get all subnets
-subnets=ipam.getAllSubnets()
-for sn in subnets:
-    # Print subnet description
-    print(f'{sn} -- last scanned at: {sn.getLastRescan()} -- last discovered at: {sn.getLastDiscovery()}')
-    # Reserve and annotate unusable IPs of this subnet (baseaddress, broadcast, router)
-    ipam.annotate_subnet(sn, hasRouter=True, force=True)
-    # Find all IPs of this subnet
-    aList = ipam.findIPsbyNet(sn)
-    
-    # Print all IPs of this subnet
-    for a in aList:
-        # Print IP address description
-        print(a)
-        # Match some content in the IP description
-        if re.match("test.*", a.getDescription()):
-            # Modify some fields of the IP
-            a.updateMac('00:00:00:00:00:00')
-            a.updateField('description', 'test-update')
-            a.updateLastSeen()
-            # Update address at the phpIPAM service
-            ipam.updateAddress(a)
-
-            # Use the ip address for anything else
-            call_some_function(str(ip.getIP()))
-
-            # Some fancy operations using ipaddress library
-            if ip.getIP() in sn.getSubnet():
-                print(f'{ip} is in {sn}')
-            else:
-                print(f'{ip} is NOT in {sn}')
-
-    # Get a list of 11 free addresses from this subnet using the best-fit algorithm
-    free_ips = ipam.getFreeIP(sn, 11, fitAlg='BestFit')
-    # Register returned addresses as used
-    for ip in free_ips:
-        ip.updateField('description', 'test-free')
-        ip.updateField('hostname', 'test-new-host')
-        # Register the IP address as used
-        ipam.registerIP(ip)
-
+As a native Python project, the installer generates a script as the entry point to each tool. The script directory is not included by default in the path. Its default location is *$HOME/.local/bin*. For example:
+```bash
+_$ $HOME/.local/bin/ipam2text -v
+_$ $HOME/.local/bin/ipamscanagent -v -fD -fR
 ```
 
-Python comprension can be used or even abused to make more compact code:
+Tools can also be started as python modules:
+```bash
+_$ python3 -m ipamtools.ipam2text -v
+_$ python3 -m ipamtools.ipamScanAgent -v -fD -fR
+```
 
-```python
-# Get only /24 subnets
-subnets=[sn for sn in ipam.getAllSubnets() if sn.getMask() == '24']
+### Common options
 
-# Get addresses from those subnets matching a pattern in the description
-aList = [a for sn in subnets for a in ipam.findIPsbyNet(sn) if re.match(r"test.*", a.getDescription())]
+Options describing the parameters to connect to the **phpIPAM** service:
+  * `--ipam-url url`:       URL of the IPAM service.
+  * `--ipam-appid appid`:   Application ID for the IPAM service.
+  * `--ipam-token token`:   Application access token for the IPAM service.
+  * `--ipam-user user`:     Username for the IPAM service.
+  * `--ipam-ca ca`:         URL or Filename of a PEM file containing the public Certificate of the CA signing the server certificates of IPAM service.
 
-# Get all subnets scanned by a Scanning Agent named 'agent1'
-agent = [agent for agent in ipam.getAllScanAgents() if agent.getDescription() == 'agent1'].pop()
-scannedSubnets = [sn for sn in ipam.getAllSubnets() if sn.scanAgent == agent.getId()]
-for sn in scannedSubnets:
-    # Print subnet description
-    print(f'{sn} -- last scanned at: {sn.getLastRescan()} -- last discovered at: {sn.getLastDiscovery()}')
+Options controlling debugging levels:
+  * `-v`: Increment detail of debugging messages.
+  * `-q`: Decrement detail of debugging messages.
 
-```    
+## Preparing the API connection of the client to phpIPAM
+Before executing the tools, you have to setup the connection parameters for clients in the **phpIPAM server** as `admin` user:
+1.  In the `Administration/API` section, create a new App ID and App Code to allow
+    the access for scan agents. Several scan agents can use the same App ID and
+    App Code, or share the same.
+    - `App permissions`: Set it to 'Read/Write'.
+    - `App security`: set it to 'User Token' by now.
+ 1. In the `Administration/Groups` section, create a new group for scan agents.
+ 1. In the `Administation/Sections` section, create edit all sections ad add rw
+    permissions for the new group for scan agents.
+ 1. In the `Administration/Users` section, create one or more users for your scan agents.
+    Agents can use the same user or different users. Add users to the new group
+    for scan agents.
+    - `User role`: set it to normal user.
+    - `Authentication method`: set it to local.
 
-## License
+
+## Scan Agent (ipamScanAgent)
+
+### Description
+
+What scan agent does.
+
+### Options
+
+The options are:
+  * `-a agentCode`:         Code to identify this scan agent.
+  * `-o`:                   Detect OS type during network discovery. Needs to be executed as root user in POSIX systems.
+                        systems.
+  * `-p interval`:           Interval between agent polls of IPAM subnets (in seconds).
+  * `-r interval`:           Interval between network rescans (in seconds).
+  * `-d interval`:           Interval between network discoveries (in seconds).
+  * `-fR`:                   Force immediate rescan. Skips the rescan interval only once at the beginning of execution of this agent.
+  * `-fD`:                   Force immediate discovery. Skips the discovery interval only once at the beginning of execution of this agent.
+
+The following options allow changing the default options of nmap for each case (rescan or discovery) for both IPv4 and IPv6 subnets. This allows fine control of the specific scanning method needed. The option string is a single string with all the options separated with spaces:
+  * `--nm-r4-opts nmap_cmd_options`:
+                        A string with options to launch nmap command when rescanning IPv4 subnets.
+  * `--nm-r6-opts nmap_cmd_options`:
+                        A string with options to launch nmap command when rescanning IPv6 subnets.
+  * `--nm-d4-opts nmap_cmd_options`:
+                        A string with options to launch nmap command when discovering IPv4 subnets.
+  * `--nm-d6-opts nmap_cmd_options`:
+                        A string with options to launch nmap command when discovering IPv6 subnets.
+
+## Address dump to text (ipam2text)
+
+### Description
+
+
+### Options
+
+
+# License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Contact
+# Contact
 Guillermo Pérez Trabado, University of Málaga, Spain.
 
 For any questions or issues, please contact the author at [guille@ac.uma.es](mailto:guille@ac.uma.es).
