@@ -44,7 +44,8 @@ class Mylogging:
 
 mylogger = Mylogging()
 
-from phpypamobjects import ipamServer, ipamAddress, ipamSubnet, ipamScanAgent
+sys.path.append(os.path.join(os.path.dirname(__file__), '../phpypamobjects'))
+from phpypamobjects.phpypamobjects import ipamServer, ipamAddress, ipamSubnet, ipamScanAgent
 
 import argparse
 import signal
@@ -245,7 +246,7 @@ def main():
         for sn in subnets:
             try:
                 # Skips folder subnets
-                if sn._net.get('isPool') == 0:
+                if sn.getisPool() == 0:
                     continue
                 text = ipam.listSubnetPlain(sn)
                 print(text)
@@ -255,7 +256,7 @@ def main():
                     if sighandler.kill_now:
                         break
                 else:
-                    mylogger.critical(f"Exception {e} listing subnet {sn.description}")
+                    mylogger.critical(f"Exception {e} listing subnet {sn.getDescription()}")
 
             if sighandler.kill_now:
                 break
