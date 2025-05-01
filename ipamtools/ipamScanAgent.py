@@ -17,7 +17,7 @@ The script is modular, with functions for specific tasks like reading the lab fi
 # Initialize logger before importing myESX modules
 import logging, sys, os
 
-from typing import Optional
+from typing import Optional, Sequence, Dict
 
 class Mylogging:
     NORMAL = int((logging.WARNING+logging.INFO)/2)
@@ -67,8 +67,7 @@ class Mylogging:
 
 mylogger = Mylogging()
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../phpypamobjects'))
-from phpypamobjects.phpypamobjects import ipamServer, ipamAddress, ipamSubnet, ipamScanAgent
+from phpypamobjects import ipamServer, ipamAddress, ipamSubnet, ipamScanAgent
 from ipaddress import ip_address, ip_network
 
 import argparse
@@ -88,7 +87,7 @@ except Exception as e:
 default_poll_interval:int = 60 * 10 # 10 minutes
 default_rescan_interval:int = 60 * 15 # 15 minutes
 default_discovery_interval:int = 60 * 60 * 4 # 4 hours
-default_nmap_Options:dict[str,dict[str,str]] = {
+default_nmap_Options:Dict[str,Dict[str,str]] = {
     'rescan': {
         '4': '-PR -sn',
         '6': "-6 --script=targets-ipv6-multicast-echo.nse --script-args 'newtargets'"
@@ -112,7 +111,7 @@ class Parameters(argparse.Namespace):
         self.discovery_interval:timedelta = timedelta(seconds=float( os.getenv("SCANAGENT_DISCOVERY_INTERVAL", default_discovery_interval) ))
         self.poll_interval:timedelta = timedelta(seconds=float( os.getenv("SCANAGENT_POLL_INTERVAL", default_poll_interval) ))
         
-        self.nmap_Options:dict[str,dict[str,str]] = {
+        self.nmap_Options:Dict[str,Dict[str,str]] = {
             'rescan': {
                 '4': os.getenv("SCANAGENT_NMAP_RESCAN_IPV4OPTIONS",default_nmap_Options['rescan']['4']),
                 '6': os.getenv("SCANAGENT_NMAP_RESCAN_IPV6OPTIONS",default_nmap_Options['rescan']['6'])
@@ -320,9 +319,9 @@ def actionOnSubnet(subnet:ipamSubnet, currentAgent:int) -> Optional[str]:
 # Scanning functions
 ###################################################################    
 
-def create_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToCreate:list[ipamAddress], osmatch:bool = False):
+def create_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToCreate:Sequence[ipamAddress], osmatch:bool = False):
     # For each new host create fields
-    erroneous:list[ipamAddress] = []
+    erroneous:Sequence[ipamAddress] = []
     for ipam_host in hostsToCreate:
         try:
             nm_host = nm[str(ipam_host.getIP())]
@@ -350,7 +349,7 @@ def create_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, 
                     ipam_host.setCurrentOS('W')
                 
             # Add MAC if present
-            nm_addresses:dict[str,str] = nm_host.get('addresses',{'mac': ''})
+            nm_addresses:Dict[str,str] = nm_host.get('addresses',{'mac': ''})
             nm_mac = nm_addresses.get('mac')
             if nm_mac:
                 ipam_host.setMac(nm_mac)
@@ -377,7 +376,7 @@ def create_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, 
     # Update network discovery timestamp
     ipam.updateSubnetLastDiscovery(subnet)
 
-def update_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToUpdate:list[ipamAddress], osmatch:bool = False):
+def update_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToUpdate:Sequence[ipamAddress], osmatch:bool = False):
     # For each existing host update some fields
     for ipam_host in hostsToUpdate:
         try:
@@ -403,7 +402,7 @@ def update_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, 
                     ipam_host.setCurrentOS('W')
 
             # Update MAC if present
-            nm_addresses:dict[str,str] = nm_host.get('addresses',{'mac': ''})
+            nm_addresses:Dict[str,str] = nm_host.get('addresses',{'mac': ''})
             nm_mac = nm_addresses.get('mac')
             if nm_mac:
                 ipam_host.setMac(nm_mac)
@@ -436,7 +435,7 @@ def discover_subnet(ipam:ipamServer, subnet:ipamSubnet, ports:str="22,53,67,69,8
     """
     mylogger.verbose(f"Discovering subnet: {subnet.getSubnet()}")
     # Get existing IPs from IPAM
-    existingHosts:list[ipamAddress] = ipam.findIPsbyNet(subnet)                        
+    existingHosts:Sequence[ipamAddress] = ipam.findIPsbyNet(subnet)                        
     mylogger.debug(f'Existing hosts: {len(existingHosts)}')
 
     # Get DNS servers for this subnet
