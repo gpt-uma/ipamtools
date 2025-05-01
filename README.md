@@ -9,16 +9,27 @@ This project provides some tools that help interacting with the IPAM server from
 - `ipam2text`: A client to dump as a plain text list the whole list of subnets and addresses of a phpIPAM service.
 
 ### Requirements
-- **Python 3.9.2** or higher (it uses python typing features)
-- **setuptools** library.
+- `Python 3.7` or higher
+- `phpypamobjects` python package
+- `phpypam` python package
+- `python-nmap` python package
+- `nmap` tool installed
 
 ### Installation
 
-**ipamtools** is distributed as a standard Python project. It is installed with `pip` in the same way as a standard Python package. If pip does not install automatically the phpypamobjects package, you should install it manually from its repository.
+`ipamtools` is distributed as a standard Python project. It is installed with `pip` in the same way as a standard Python package. `pip` will install all the python dependencies, but not the `nmap` tool.
 
 ```bash
 pip install ipamtools
 ```
+
+**Notice**: Currently this package is not part of python packages auto-downloaded by pip.  If pip does not install automatically the `ipamtools` package, you should install it manually specifying the URL of the package in the `dist` folder of the repository.
+
+```bash
+pip install https://github.com/gpt-uma/ipamtools/tree/main/dist/ipamtools-<version>.tar.gz
+```
+
+
 ## Usage
 
 As a native Python project, the installer generates a script as the entry point to each tool. The script directory is not included by default in the path. Its default location is *$HOME/.local/bin*. For example:

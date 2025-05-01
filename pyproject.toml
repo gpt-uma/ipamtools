@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ipamtools"
-version = "0.1.0"
+version = "0.2.0"
 description = "A set of command line tools that interact with to phpIPAM service."
 readme = "README.md"
 keywords = ["IPAM", "phpIPAM", "IP address scanner", "nmap"]
@@ -26,12 +26,10 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
 ]
-requires-python = ">=3.9.2"
+requires-python = ">=3.7"
 dependencies = [
-    "phpypamobjects>=0.1.9"
+    "phpypamobjects>=0.2.0"
 ]
-license = "GPL-3.0-or-later"
-license-files = ["LICENSE"]
 
 [project.urls]
 Homepage = "https://github.com/gpt-uma/ipamtools"

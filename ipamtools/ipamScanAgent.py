@@ -17,7 +17,7 @@ The script is modular, with functions for specific tasks like reading the lab fi
 # Initialize logger before importing myESX modules
 import logging, sys, os
 
-from typing import Optional
+from typing import Optional, Sequence, Dict
 
 class Mylogging:
     NORMAL = int((logging.WARNING+logging.INFO)/2)
@@ -67,7 +67,6 @@ class Mylogging:
 
 mylogger = Mylogging()
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from phpypamobjects import ipamServer, ipamAddress, ipamSubnet, ipamScanAgent
 from ipaddress import ip_address, ip_network
 
@@ -77,7 +76,6 @@ import signal
 import time
 from datetime import datetime, timedelta, timezone
 import textwrap
-import socket
 try:
     import nmap
 except Exception as e:
@@ -89,7 +87,7 @@ except Exception as e:
 default_poll_interval:int = 60 * 10 # 10 minutes
 default_rescan_interval:int = 60 * 15 # 15 minutes
 default_discovery_interval:int = 60 * 60 * 4 # 4 hours
-default_nmap_Options:dict[str,dict[str,str]] = {
+default_nmap_Options:Dict[str,Dict[str,str]] = {
     'rescan': {
         '4': '-PR -sn',
         '6': "-6 --script=targets-ipv6-multicast-echo.nse --script-args 'newtargets'"
@@ -113,7 +111,7 @@ class Parameters(argparse.Namespace):
         self.discovery_interval:timedelta = timedelta(seconds=float( os.getenv("SCANAGENT_DISCOVERY_INTERVAL", default_discovery_interval) ))
         self.poll_interval:timedelta = timedelta(seconds=float( os.getenv("SCANAGENT_POLL_INTERVAL", default_poll_interval) ))
         
-        self.nmap_Options:dict[str,dict[str,str]] = {
+        self.nmap_Options:Dict[str,Dict[str,str]] = {
             'rescan': {
                 '4': os.getenv("SCANAGENT_NMAP_RESCAN_IPV4OPTIONS",default_nmap_Options['rescan']['4']),
                 '6': os.getenv("SCANAGENT_NMAP_RESCAN_IPV6OPTIONS",default_nmap_Options['rescan']['6'])
@@ -296,24 +294,24 @@ def search_agent(ipam:ipamServer, code:str) -> Optional[ipamScanAgent]:
 
 def actionOnSubnet(subnet:ipamSubnet, currentAgent:int) -> Optional[str]:
     # Skip subnets not assigned to this agent
-    if subnet.scanAgent != currentAgent:
-        mylogger.debug(f"Subnet not ours: {subnet.subnet} ({subnet.getSubnet()}) agent={subnet.scanAgent}")
+    if subnet.getscanAgent() != currentAgent:
+        mylogger.debug(f"Subnet not ours: {subnet.getSubnet()} ({subnet.getDescription()}) agent={subnet.getscanAgent()}")
         return 'skip'
 
     # Skip subnets which are not pools
-    if subnet._net.get('isPool') == 0:
-        mylogger.debug(f"Subnet not a pool: {subnet.subnet} ({subnet.getSubnet()})")
+    if subnet.getisPool() == 0:
+        mylogger.debug(f"Subnet not a pool: {subnet.getSubnet()} ({subnet.getDescription()})")
         return 'skip'
 
     # Discover subnet if enabled and if last discovery is older than the discovery interval
     lastDiscover = subnet.getLastDiscovery()
-    if subnet._net.get('discoverSubnet') == 1:
+    if subnet.getdiscoverSubnet() == 1:
         if parameters.immediateDiscovery or datetime.now(tz=lastDiscover.tzinfo) > (lastDiscover + parameters.discovery_interval):
             return 'discover'
     
     # Rescan subnet if enabled and if last rescan is older than the rescan interval
     lastRescan = subnet.getLastRescan()
-    if subnet._net.get('pingSubnet') == 1:
+    if subnet.getpingSubnet() == 1:
         if parameters.immediateRescan or datetime.now(tz=lastRescan.tzinfo) > (lastRescan + parameters.rescan_interval):
             return 'rescan'
 
@@ -321,109 +319,110 @@ def actionOnSubnet(subnet:ipamSubnet, currentAgent:int) -> Optional[str]:
 # Scanning functions
 ###################################################################    
 
-def create_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToCreate:list[ipamAddress], osmatch:bool = False):
+def create_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToCreate:Sequence[ipamAddress], osmatch:bool = False):
     # For each new host create fields
-    erroneous:list[ipamAddress] = []
-    for host in hostsToCreate:
+    erroneous:Sequence[ipamAddress] = []
+    for ipam_host in hostsToCreate:
         try:
-            h = nm[str(host.getIP())]
+            nm_host = nm[str(ipam_host.getIP())]
             # Add hostname
-            if h.hostname():
-                host.updateField('hostname',h.hostname())
-            host.updateField('custom_scanagentid',agent.getId()) # type: ignore
-            host.updateField('custom_scanfirstdate',f"{datetime.now().isoformat()}")
+            if nm_host.hostname():
+                ipam_host.setHostname(nm_host.hostname())
+            ipam_host.setAgentId(agent.getId()) # type: ignore
+            ipam_host.updateScanFirstDate()
 
             # Add timestamp
-            host.updateLastSeen()
+            ipam_host.updateLastSeen()
 
             # Add list of TCP ports
-            if h.all_tcp():
-                host.updateField('custom_tcpports',
-                    ', '.join([f"{p}({h.tcp(p)['name']})" for p in h.all_tcp() if h.tcp(p)['state']=='open']))
+            if nm_host.all_tcp():
+                ipam_host.setTCPports(
+                    ', '.join([f"{p}({nm_host.tcp(p)['name']})" for p in nm_host.all_tcp() if nm_host.tcp(p)['state']=='open'])
+                    )
                 
                 # Try to detect if current OS is Windows or Linux
                 # UNIX/Linux runs not RDP
-                if 3389 in h.all_tcp() and h.tcp(3389)['state']=='closed':
-                    host.updateField('custom_OS_current','U')
+                if 3389 in nm_host.all_tcp() and nm_host.tcp(3389)['state']=='closed':
+                    ipam_host.setCurrentOS('U')
                 # Windows runs RDP
-                if 3389 in h.all_tcp() and re.match(r'open.*',h.tcp(3389)['state']):
-                    host.updateField('custom_OS_current','W')
+                if 3389 in nm_host.all_tcp() and re.match(r'open.*',nm_host.tcp(3389)['state']):
+                    ipam_host.setCurrentOS('W')
                 
             # Add MAC if present
-            addresses = h.get('addresses',{'mac': ''})
-            mac = addresses.get('mac')
-            if mac:
-                host.updateField('mac', mac)
+            nm_addresses:Dict[str,str] = nm_host.get('addresses',{'mac': ''})
+            nm_mac = nm_addresses.get('mac')
+            if nm_mac:
+                ipam_host.setMac(nm_mac)
 
             # Add OS info if present
-            osmatchInfo = h.get('osmatch','')
-            if osmatchInfo:
-                osname = osmatchInfo[0]['name']
+            nm_osmatchInfo = nm_host.get('osmatch','')
+            if nm_osmatchInfo:
+                osname = nm_osmatchInfo[0]['name']
                 if osname:
-                    host.updateField('custom_OS_detected',osname)
+                    ipam_host.setDetectedOS(osname)
         except PermissionError as e:
-            mylogger.error(f'Error setting fields for new address {host.getIP()}: {e}')
+            mylogger.error(f'Error setting fields for new address {ipam_host.getIP()}: {e}')
         else:
             # Create new IP in IPAM
             try:
-                ipam.registerIP(host)
-                mylogger.normal(f"NEW HOST {host}")
+                ipam.registerIP(ipam_host)
+                mylogger.normal(f"NEW HOST {ipam_host}")
             except Exception as e:
-                mylogger.error(f'Error adding host {host}: {str(e)}')
-                mylogger.debug(f"Failed creation request: {host._addr}")
-                erroneous.append(host)
+                mylogger.error(f'Error adding host {ipam_host}: {str(e)}')
+                mylogger.debug(f"Failed creation request: {ipam_host.getDictionary()}")
+                erroneous.append(ipam_host)
     mylogger.verbose(f'Created: {len(hostsToCreate)-len(erroneous)} IPs/Failed to create {len(erroneous)} IPs.')
 
     # Update network discovery timestamp
     ipam.updateSubnetLastDiscovery(subnet)
 
-def update_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToUpdate:list[ipamAddress], osmatch:bool = False):
+def update_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToUpdate:Sequence[ipamAddress], osmatch:bool = False):
     # For each existing host update some fields
-    for host in hostsToUpdate:
+    for ipam_host in hostsToUpdate:
         try:
-            h = nm[str(host.getIP())]
+            nm_host = nm[str(ipam_host.getIP())]
             # Update hostname
-            if h.hostname():
-                host.updateField('hostname',h.hostname())
+            if nm_host.hostname():
+                ipam_host.setHostname(nm_host.hostname())
 
             # Update timestamp
-            host.updateLastSeen()
+            ipam_host.updateLastSeen()
 
             # Update list of TCP ports if available
-            if h.all_tcp():
-                host.updateField('custom_tcpports',
-                    ', '.join([f"{p}({h.tcp(p)['name']})" for p in h.all_tcp() if h.tcp(p)['state']=='open']))
+            if nm_host.all_tcp():
+                ipam_host.setTCPports(
+                    ', '.join([f"{p}({nm_host.tcp(p)['name']})" for p in nm_host.all_tcp() if nm_host.tcp(p)['state']=='open']))
                 
                 # Try to detect if current OS is Windows or Linux
                 # UNIX/Linux runs ssh and not RDP
-                if 3389 in h.all_tcp() and h.tcp(3389)['state']=='closed':
-                    host.updateField('custom_OS_current','U')
+                if 3389 in nm_host.all_tcp() and nm_host.tcp(3389)['state']=='closed':
+                    ipam_host.setCurrentOS('U')
                 # Windows runs netbios and RDP
-                if 3389 in h.all_tcp() and h.tcp(3389)['state']!='closed':
-                    host.updateField('custom_OS_current','W')
+                if 3389 in nm_host.all_tcp() and nm_host.tcp(3389)['state']!='closed':
+                    ipam_host.setCurrentOS('W')
 
             # Update MAC if present
-            addresses = h.get('addresses',{'mac': ''})
-            mac = addresses.get('mac')
-            if mac:
-                host.updateField('mac', mac)
+            nm_addresses:Dict[str,str] = nm_host.get('addresses',{'mac': ''})
+            nm_mac = nm_addresses.get('mac')
+            if nm_mac:
+                ipam_host.setMac(nm_mac)
 
             # Add OS info if present and description is not set
-            osmatchInfo = h.get('osmatch','')
+            osmatchInfo = nm_host.get('osmatch','')
             if osmatchInfo:
                 osname = osmatchInfo[0]['name']
                 if osname:
-                    host.updateField('custom_OS_detected',osname)
+                    ipam_host.setDetectedOS(osname)
 
         except PermissionError as e:
-            mylogger.error(f'Error updating fields for address {str(host.getIP())}: {e}')
+            mylogger.error(f'Error updating fields for address {str(ipam_host.getIP())}: {e}')
         else:
             # Update IP in IPAM
             try:
-                ipam.updateAddress(host)
+                ipam.updateAddress(ipam_host)
             except Exception as e:
                 mylogger.error(f'Error updating host: {str(e)}')
-            mylogger.verbose(f"UPDATE HOST {host}")
+            mylogger.verbose(f"UPDATE HOST {ipam_host}")
     # Update network rescan timestamp
     ipam.updateSubnetLastScan(subnet)
 
@@ -436,7 +435,7 @@ def discover_subnet(ipam:ipamServer, subnet:ipamSubnet, ports:str="22,53,67,69,8
     """
     mylogger.verbose(f"Discovering subnet: {subnet.getSubnet()}")
     # Get existing IPs from IPAM
-    existingHosts:list[ipamAddress] = ipam.findIPsbyNet(subnet)                        
+    existingHosts:Sequence[ipamAddress] = ipam.findIPsbyNet(subnet)                        
     mylogger.debug(f'Existing hosts: {len(existingHosts)}')
 
     # Get DNS servers for this subnet
@@ -492,7 +491,7 @@ def rescan_subnet(ipam:ipamServer, subnet:ipamSubnet, ports:str="22,139,3389"):
     :param subnet: Subnet to scan.
     :return: (List of IP addresses to update,List of IP addresses to create)
     """
-    mylogger.verbose(f"Rescanning subnet: {subnet.showName} ({subnet.getSubnet()})")
+    mylogger.verbose(f"Rescanning subnet: {subnet.getSubnet()} ({subnet.getDescription()})")
     # Get existing IPs from IPAM
     existingHosts = ipam.findIPsbyNet(subnet)                        
     mylogger.debug(f'Existing hosts: {len(existingHosts)}')
