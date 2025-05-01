@@ -80,9 +80,10 @@ echo " "
 echo " "
 
 # Launch Scan Agent
-echo "$HOME/.local/bin/ipamscanagent $@"
-$HOME/.local/bin/ipamscanagent $@
 
-# Alternative way of launching the script
-#echo "python3 -m ipamtools.ipamScanAgent $@"
-#python3 -m ipamtools.ipamScanAgent $@
+# echo "$HOME/.local/bin/ipamscanagent $@"
+# $HOME/.local/bin/ipamscanagent $@
+
+# This way of launching the script is OS independent (python3 must be the default python interpreter)
+echo "python -m ipamtools.ipamScanAgent $@"
+python -m ipamtools.ipamScanAgent $@

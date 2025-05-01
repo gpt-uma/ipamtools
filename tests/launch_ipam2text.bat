@@ -81,9 +81,11 @@ echo
 echo  
 
 @REM Launch ipam2text
-echo %USERPROFILE%/.local/bin/ipam2text %*
-%USERPROFILE%/.local/bin/ipam2text %*
 
-@REM Alternative way of launching the script
-@REM echo python3 -m ipamtools.ipam2text %*
-@REM python3 -m ipamtools.ipam2text %*
+@REM This way of launching the script depends on the python version
+@REM echo %USERPROFILE%/AppData/Roaming/Python/Python312/Scripts/ipam2text %*
+@REM %USERPROFILE%/AppData/Roaming/Python/Python312/Scripts/ipam2text %*
+
+@REM This way of launching the script is OS and verson independent (python3 must be the default python interpreter)
+echo python -m ipamtools.ipam2text %*
+python -m ipamtools.ipam2text %*

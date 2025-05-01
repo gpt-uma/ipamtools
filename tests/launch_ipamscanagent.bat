@@ -81,9 +81,11 @@ echo
 echo  
 
 @REM Launch Scan Agent
-echo %USERPROFILE%/.local/bin/ipamscanagent %*
-%USERPROFILE%/.local/bin/ipamscanagent %*
 
-@REM Alternative way of launching the script
-@REM echo python3 -m ipamtools.ipamScanAgent %*
-@REM python3 -m ipamtools.ipamScanAgent %*
+@REM This way of launching the script depends on the python version
+@REM echo %USERPROFILE%/AppData/Roaming/Python/Python312/Scripts/ipamscanagent %*
+@REM %USERPROFILE%/AppData/Roaming/Python/Python312/Scripts/ipamscanagent %*
+
+@REM This way of launching the script is OS and verson independent (python3 must be the default python interpreter)
+echo python3 -m ipamtools.ipamScanAgent %*
+python -m ipamtools.ipamScanAgent %*
