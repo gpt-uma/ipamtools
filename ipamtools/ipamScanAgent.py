@@ -89,7 +89,7 @@ default_rescan_interval:int = 60 * 15 # 15 minutes
 default_discovery_interval:int = 60 * 60 * 4 # 4 hours
 default_nmap_Options:Dict[str,Dict[str,str]] = {
     'rescan': {
-        '4': '-PR -sn',
+        '4': '-sn',
         '6': "-6 --script=targets-ipv6-multicast-echo.nse --script-args 'newtargets'"
         },
     'discover': {
