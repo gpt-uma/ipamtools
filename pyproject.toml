@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ipamtools"
-version = "0.2.0"
+version = "0.2.1"
 description = "A set of command line tools that interact with to phpIPAM service."
 readme = "README.md"
 keywords = ["IPAM", "phpIPAM", "IP address scanner", "nmap"]
