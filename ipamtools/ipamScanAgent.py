@@ -379,49 +379,68 @@ def create_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, 
 def update_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, hostsToUpdate:Sequence[ipamAddress], osmatch:bool = False):
     # For each existing host update some fields
     for ipam_host in hostsToUpdate:
-        try:
             nm_host = nm[str(ipam_host.getIP())]
             # Update hostname
             if nm_host.hostname():
-                ipam_host.setHostname(nm_host.hostname())
+                try:
+                    ipam_host.setHostname(nm_host.hostname())
+                except PermissionError as e:
+                    mylogger.error(f'Error updating field hostname for address {str(ipam_host.getIP())}: {e}')
 
             # Update timestamp
-            ipam_host.updateLastSeen()
+            try:
+                ipam_host.updateLastSeen()
+            except PermissionError as e:
+                mylogger.error(f'Error updating field lastseen for address {str(ipam_host.getIP())}: {e}')
 
             # Update list of TCP ports if available
             if nm_host.all_tcp():
-                ipam_host.setTCPports(
-                    ', '.join([f"{p}({nm_host.tcp(p)['name']})" for p in nm_host.all_tcp() if nm_host.tcp(p)['state']=='open']))
+                try:
+                    ipam_host.setTCPports(
+                        ', '.join([f"{p}({nm_host.tcp(p)['name']})" for p in nm_host.all_tcp() if nm_host.tcp(p)['state']=='open']))
+                except PermissionError as e:
+                    mylogger.error(f'Error updating field tcpports for address {str(ipam_host.getIP())}: {e}')
+
                 
                 # Try to detect if current OS is Windows or Linux
                 # UNIX/Linux runs ssh and not RDP
                 if 3389 in nm_host.all_tcp() and nm_host.tcp(3389)['state']=='closed':
-                    ipam_host.setCurrentOS('U')
+                    try:
+                        ipam_host.setCurrentOS('U')
+                    except PermissionError as e:
+                        mylogger.error(f'Error updating field currentOS for address {str(ipam_host.getIP())}: {e}')
+
                 # Windows runs netbios and RDP
                 if 3389 in nm_host.all_tcp() and nm_host.tcp(3389)['state']!='closed':
-                    ipam_host.setCurrentOS('W')
+                    try:
+                        ipam_host.setCurrentOS('W')
+                    except PermissionError as e:
+                        mylogger.error(f'Error updating field currentOS for address {str(ipam_host.getIP())}: {e}')
 
             # Update MAC if present
             nm_addresses:Dict[str,str] = nm_host.get('addresses',{'mac': ''})
             nm_mac = nm_addresses.get('mac')
             if nm_mac:
-                ipam_host.setMac(nm_mac)
+                try:
+                    ipam_host.setMac(nm_mac)
+                except PermissionError as e:
+                    mylogger.error(f'Error updating field mac for address {str(ipam_host.getIP())}: {e}')
 
             # Add OS info if present and description is not set
             osmatchInfo = nm_host.get('osmatch','')
             if osmatchInfo:
                 osname = osmatchInfo[0]['name']
                 if osname:
-                    ipam_host.setDetectedOS(osname)
+                    try:
+                        ipam_host.setDetectedOS(osname)
+                    except PermissionError as e:
+                        mylogger.error(f'Error updating field detectedOS for address {str(ipam_host.getIP())}: {e}')
 
-        except PermissionError as e:
-            mylogger.error(f'Error updating fields for address {str(ipam_host.getIP())}: {e}')
-        else:
             # Update IP in IPAM
             try:
                 ipam.updateAddress(ipam_host)
             except Exception as e:
-                mylogger.error(f'Error updating host: {str(e)}')
+                mylogger.error(f'Error updating host in ipam service: {str(e)}')
             mylogger.verbose(f"UPDATE HOST {ipam_host}")
     # Update network rescan timestamp
     ipam.updateSubnetLastScan(subnet)
