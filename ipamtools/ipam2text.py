@@ -44,7 +44,11 @@ class Mylogging:
 
 mylogger = Mylogging()
 
-from phpypamobjects import ipamServer, ipamAddress, ipamSubnet, ipamScanAgent
+try:
+    from phpypamobjects import ipamServer, ipamAddress, ipamSubnet, ipamScanAgent
+except ImportError as e:
+    sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+    from phpypamobjects.phpypamobjects import ipamServer, ipamAddress, ipamSubnet, ipamScanAgent
 
 import argparse
 import signal
