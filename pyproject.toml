@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ipamtools"
-version = "0.2.2"
+version = "0.2.3"
 description = "A set of command line tools that interact with to phpIPAM service."
 readme = "README.md"
 keywords = ["IPAM", "phpIPAM", "IP address scanner", "nmap"]
@@ -40,3 +40,4 @@ Issues = "https://github.com/gpt-uma/ipamtools/issues"
 [project.scripts]
 ipamscanagent = "ipamtools.ipamScanAgent:main"
 ipam2text     = "ipamtools.ipam2text:main"
+ipamcli       = "ipamtools.ipamcli:main"
