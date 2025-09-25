@@ -356,7 +356,7 @@ def create_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, 
             nm_addresses:Dict[str,str] = nm_host.get('addresses',{'mac': ''})
             nm_mac = nm_addresses.get('mac')
             if nm_mac:
-                ipam_host.setMac(nm_mac)
+                ipam_host.setMAC(nm_mac)
 
             # Add OS info if present
             nm_osmatchInfo = nm_host.get('osmatch','')
@@ -426,7 +426,7 @@ def update_ipaddresses(ipam:ipamServer, subnet:ipamSubnet, nm:nmap.PortScanner, 
             nm_mac = nm_addresses.get('mac')
             if nm_mac:
                 try:
-                    ipam_host.setMac(nm_mac)
+                    ipam_host.setMAC(nm_mac)
                 except PermissionError as e:
                     mylogger.error(f'Error updating field mac for address {str(ipam_host.getIP())}: {e}')
 
