@@ -430,7 +430,7 @@ def print_ls_address(cmd:Parameters, addr:ipamAddress):
     # Check shown 
     date_info = f' {date_info:25}' if cmd.lslastSeen or cmd.lsAll else ''
     age_info = f' {age_info:>17}' if cmd.lsAge or cmd.lsAll else ''
-    mac_info = f' {str(addr.getMac()):17} ' if cmd.lsMAC or cmd.lsAll else ''
+    mac_info = f' {str(addr.getMAC()):17} ' if cmd.lsMAC or cmd.lsAll else ''
     host_info = f' {host_info:<20} ' if cmd.lsHostname or cmd.lsAll else ''
     descr_info = f' {addr.getDescription()} ' if cmd.lsDescription or cmd.lsAll else ''
 
