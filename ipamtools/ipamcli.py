@@ -230,20 +230,15 @@ class CMD_Parsers:
                         case 'ls':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
-                            subparsersList['parser_range'].add_argument('-m',           dest='lsMAC',         default=False, action='store_true', required=False, help='Show MAC addresses.')
-                            subparsersList['parser_range'].add_argument('--mac',        dest='lsMAC',      default=False, action='store_true', required=False, help='Show MAC addresses.')
-                            subparsersList['parser_range'].add_argument('-l',           dest='lslastSeen',    default=False, action='store_true', required=False, help='Show date this address was last seen.')
-                            subparsersList['parser_range'].add_argument('--last',       dest='lslastSeen', default=False, action='store_true', required=False, help='Show date this address was last seen.')
-                            subparsersList['parser_range'].add_argument('-g',           dest='lsAge',         default=False, action='store_true', required=False, help='Show time elapsed since last seen.')
-                            subparsersList['parser_range'].add_argument('--age',        dest='lsAge',      default=False, action='store_true', required=False, help='Show time elapsed since last seen.')
-                            subparsersList['parser_range'].add_argument('-d',           dest='lsDescription', default=False, action='store_true', required=False, help='Show description.')
-                            subparsersList['parser_range'].add_argument('--description', dest='lsDescription', default=False, action='store_true', required=False, help='Show description.')
-                            subparsersList['parser_range'].add_argument('-n',   dest='lsHostname', default=False, action='store_true', required=False, help='Show hostname.')
-                            subparsersList['parser_range'].add_argument('--hostname',   dest='lsHostname', default=False, action='store_true', required=False, help='Show hostname.')
-                            subparsersList['parser_range'].add_argument('-a',           dest='lsAll',       default=False, action="store_true", help='Show all information. Equivalent to -m -l -g -d -n.')
-                            subparsersList['parser_range'].add_argument('--all',        dest='lsAll',       default=False, action="store_true", help='Show all information. Equivalent to -m -l -g -d -n.')
+                            subparsersList['parser_range'].add_argument('-m','--mac',           dest='lsMAC',      default=False, action='store_true', required=False, help='Show MAC addresses.')
+                            subparsersList['parser_range'].add_argument('-l','--last',          dest='lslastSeen', default=False, action='store_true', required=False, help='Show date this address was last seen.')
+                            subparsersList['parser_range'].add_argument('-g','--age',           dest='lsAge',      default=False, action='store_true', required=False, help='Show time elapsed since last seen.')
+                            subparsersList['parser_range'].add_argument('-d','--description',   dest='lsDescription', default=False, action='store_true', required=False, help='Show description.')
+                            subparsersList['parser_range'].add_argument('-n','--hostname', dest='lsHostname', default=False, action='store_true', required=False, help='Show resolved hostname.')
+                            subparsersList['parser_range'].add_argument('-a','--all',           dest='lsAll',       default=False, action="store_true", help='Show all information. Equivalent to -m -l -g -d -n.')
                             subparsersList['parser_range'].add_argument('--newer', type=int, default=None, required=False, help='Seen less than X days ago.')
                             subparsersList['parser_range'].add_argument('--older', type=int, default=None, required=False, help='Seen more than X days ago.')
+                            subparsersList['parser_range'].add_argument('-s','--space',         dest='space', default=False, action='store_true', required=False, help='Print spacing lines when unused addresses are found.')
                         case 'findbyname':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
@@ -254,12 +249,9 @@ class CMD_Parsers:
                         case 'unregister':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd',     type=str, help='Ending IP address.')
-                            subparsersList['parser_range'].add_argument('-o',      type=int, default=None, required=False, help='Only unregister addresses seen more than X days ago.')
-                            subparsersList['parser_range'].add_argument('--older',      type=int, default=None, required=False, help='Only unregister addresses seen more than X days ago.')
-                            subparsersList['parser_range'].add_argument('-n',      type=int, default=None, required=False, help='Only unregister addresses seen less than X days ago.')
-                            subparsersList['parser_range'].add_argument('--newer',      type=int, default=None, required=False, help='Only unregister addresses seen less than X days ago.')
-                            subparsersList['parser_range'].add_argument('-a',      type=int, default=1,    required=False, help='If there are addresses seen less than X days ago, refuse unregistering any address. Default is 1 day.')
-                            subparsersList['parser_range'].add_argument('--alive',      type=int, default=1,    required=False, help='If there are addresses seen less than X days ago, refuse unregistering any address. Default is 1 day.')
+                            subparsersList['parser_range'].add_argument('-o','--older',      type=int, default=None, required=False, help='Only unregister addresses seen more than X days ago.')
+                            subparsersList['parser_range'].add_argument('-n','--newer',      type=int, default=None, required=False, help='Only unregister addresses seen less than X days ago.')
+                            subparsersList['parser_range'].add_argument('-a','--alive',      type=int, default=1,    required=False, help='If there are addresses seen less than X days ago, refuse unregistering any address. Default is 1 day.')
                             subparsersList['parser_range'].add_argument('-f',           dest='forceUnregister', default=False, action='store_true', required=False, help='Force unregistering the range even if there are recently seen addresses (not needed when using --older or --newer).')
                         case 'annotate':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
@@ -468,27 +460,40 @@ def execute_range(server:ipamServer, cmd:Parameters):
         end_ip = ipaddress.ip_address(cmd.rangeEnd)
         mylogger.debug(f'ls {start_ip} {end_ip}')
         addresses = [ipaddress.ip_address(i) for i in range(int(start_ip), int(end_ip) + 1)]
-        for ip in addresses:
-            mylogger.debug(f'Processing IP {ip}')
-            matching_addresses = server.findIPs(ip)
-            # Check if address is registered
-            if matching_addresses == []:
-                mylogger.info(f'== {ip} address not registered ==')
-                continue
-            for addr in matching_addresses:
-                last_seen = addr.getLastSeen()
-                # Check for age filters
-                if last_seen:
-                    age = (datetime.datetime.now(last_seen.tzinfo) - last_seen)
-                    if cmd.newer and age > timedelta(days=cmd.newer):
-                        continue
-                    if cmd.older and age < timedelta(days=cmd.older):
-                        continue
+        unregistered_addresses = 0
+        try:
+            for ip in addresses:
+                mylogger.debug(f'Processing IP {ip}')
+                matching_addresses = server.findIPs(ip)
+                # Check if address is registered
+                if matching_addresses == []:
+                    mylogger.debug(f'== {ip} address not registered ==')
+                    unregistered_addresses += 1
+                    continue
                 else:
-                    if cmd.newer:
-                        continue
-                # Print address attributes
-                print_ls_address(cmd, addr)
+                    if unregistered_addresses > 0 and cmd.space:
+                        print(f'... {unregistered_addresses} unregistered addresses ...')
+                        unregistered_addresses = 0
+                for addr in matching_addresses:
+                    last_seen = addr.getLastSeen()
+                    # Check for age filters
+                    if last_seen:
+                        age = (datetime.datetime.now(last_seen.tzinfo) - last_seen)
+                        if cmd.newer and age > timedelta(days=cmd.newer):
+                            continue
+                        if cmd.older and age < timedelta(days=cmd.older):
+                            continue
+                    else:
+                        if cmd.newer:
+                            continue
+                    # Print address attributes
+                    print_ls_address(cmd, addr)
+            if unregistered_addresses > 0 and cmd.space:
+                print(f'... {unregistered_addresses} unregistered addresses ...')
+        except KeyboardInterrupt:
+            print("\n<INTR>")
+        except Exception as e:
+            mylogger.error("Interrupted by exception: " + str(e))
 
     # age command
     if cmd.subcommand == 'age':
