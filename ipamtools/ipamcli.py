@@ -91,7 +91,7 @@ class Parameters(argparse.Namespace):
         self.debug = 0
         self.quiet:bool = False
         path:str = os.getenv("HOME",".")
-        self.clihistory:str = path + "/.esx_history"
+        self.clihistory:str = path + "/.ipam_history"
         self.prompt:str = 'IPAMcli:: '
         self.command:str = ''
         self.pattern:str = ''
