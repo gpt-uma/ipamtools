@@ -1,1 +1,1 @@
-pip install --index-url https://github.com/gpt-uma/ipamtools/-/raw/main/dist ipamtools
+pip install --index-url https://raw.githubusercontent.com/gpt-uma/ipamtools/refs/heads/main/dist/ ipamtools

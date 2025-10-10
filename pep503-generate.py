@@ -30,7 +30,13 @@ def generate_simple_index(dist_dir="dist", output_file="index.html"):
         if not repository_url:
             raise KeyError("No Download or Repository URL found in pyproject.toml")
         else:
-            download_url = repository_url.rstrip('.git') + '/-/raw/main/dist'
+            # Convert the repository URL to a raw URL for GitHub if the domain is github.com
+            if "//github.com/" in repository_url:
+                # Replace the github.com URL to a raw.githubusercontent.com URL
+                download_url = repository_url.replace("//github.com/", "//raw.githubusercontent.com/").rstrip('.git') + '/refs/heads/main/dist/'
+            # For gitlab the conversion to raw URL is different
+            else:
+                download_url = repository_url.rstrip('.git') + '/-/raw/main/dist'
 
     # Generate HTML
     html_content = dedent(f'''
