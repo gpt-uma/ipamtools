@@ -1,2 +1,4 @@
 ipamtools.egg-info
 ipamtools/__pycache__
+pipinstall_target_ipamtools.dat
+dist
