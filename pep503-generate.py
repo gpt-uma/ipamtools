@@ -33,7 +33,7 @@ def generate_simple_index(dist_dir="dist", output_file="index.html"):
             # Convert the repository URL to a raw URL for GitHub if the domain is github.com
             if "//github.com/" in repository_url:
                 # Replace the github.com URL to a raw.githubusercontent.com URL
-                download_url = repository_url.replace("//github.com/", "//raw.githubusercontent.com/").rstrip('.git') + '/refs/heads/main/dist/'
+                download_url = repository_url.replace("//github.com/", "//raw.githubusercontent.com/").rstrip('.git') + '/refs/heads/main/dist'
             # For gitlab the conversion to raw URL is different
             else:
                 download_url = repository_url.rstrip('.git') + '/-/raw/main/dist'
@@ -65,7 +65,8 @@ def generate_simple_index(dist_dir="dist", output_file="index.html"):
     ''')
 
     # Write PEP 503 compliant HTML file to dist directory   
-    with open(os.path.join(os.path.dirname(__file__), dist_dir, output_file), 'w') as f:
+    os.makedirs(os.path.join(os.path.dirname(__file__), dist_dir, project_name), exist_ok=True)
+    with open(os.path.join(os.path.dirname(__file__), dist_dir, project_name, output_file), 'w') as f:
         f.write(html_content)
 
     # Write the Download command for pip in a separate file
