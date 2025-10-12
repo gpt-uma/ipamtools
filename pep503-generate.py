@@ -21,6 +21,7 @@ def generate_simple_index(dist_dir="dist", output_file="index.html"):
     project_version = pyproject['project']['version']
     requires_python = pyproject['project'].get('requires-python', '>=3.7')
     python_version = html.escape(requires_python)
+    project_repository = pyproject['project']['urls'].get('Repository')
 
     # Prepare the base URL for downloading the package files from a directory named after the project under dist directory    
     download_url = pyproject['project']['urls'].get('Download')
@@ -87,7 +88,7 @@ def generate_simple_index(dist_dir="dist", output_file="index.html"):
 
     # Write the Download command for pip in a separate file
     with open(os.path.join(os.path.dirname(__file__), f'pipinstall_target_{project_name}.dat'), 'w') as f:
-        f.write(f"pip install 'git+'{download_url}\n")
+        f.write(f"git+{project_repository}\n")
 
 
 if __name__ == "__main__":
