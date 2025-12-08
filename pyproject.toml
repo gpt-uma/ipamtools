@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ipamtools"
-version = "0.3.6"
+version = "0.3.7"
 description = "A set of command line tools that interact with to phpIPAM service."
 readme = "README.md"
 keywords = ["IPAM", "phpIPAM", "IP address scanner", "nmap"]
@@ -28,7 +28,7 @@ classifiers = [
 ]
 requires-python = ">=3.7"
 dependencies = [
-    "phpypamobjects>=0.3.6",
+    "phpypamobjects>=0.3.7",
     "setuptools>=42",
     "wheel",
 ]
