@@ -222,12 +222,10 @@ class CMD_Parsers:
             return None
 
         try:
-            match parse_result.command:
-                case 'range':
-                    match parse_result.subcommand:
-                        case 'help':
+                if parse_result.command == 'range':
+                        if parse_result.subcommand == 'help':
                             subparsersList['parser_range'].print_help()
-                        case 'ls':
+                        if parse_result.subcommand == 'ls':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
                             subparsersList['parser_range'].add_argument('-m','--mac',           dest='lsMAC',      default=False, action='store_true', required=False, help='Show MAC addresses.')
@@ -239,25 +237,25 @@ class CMD_Parsers:
                             subparsersList['parser_range'].add_argument('--newer', type=int, default=None, required=False, help='Seen less than X days ago.')
                             subparsersList['parser_range'].add_argument('--older', type=int, default=None, required=False, help='Seen more than X days ago.')
                             subparsersList['parser_range'].add_argument('-s','--space',         dest='space', default=False, action='store_true', required=False, help='Print spacing lines when unused addresses are found.')
-                        case 'findbyname':
+                        if parse_result.subcommand == 'findbyname':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
                             subparsersList['parser_range'].add_argument('pattern', type=str, help='Search pattern.')
-                        case 'register':
+                        if parse_result.subcommand == 'register':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
-                        case 'unregister':
+                        if parse_result.subcommand == 'unregister':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd',     type=str, help='Ending IP address.')
                             subparsersList['parser_range'].add_argument('-o','--older',      type=int, default=None, required=False, help='Only unregister addresses seen more than X days ago.')
                             subparsersList['parser_range'].add_argument('-n','--newer',      type=int, default=None, required=False, help='Only unregister addresses seen less than X days ago.')
                             subparsersList['parser_range'].add_argument('-a','--alive',      type=int, default=1,    required=False, help='If there are addresses seen less than X days ago, refuse unregistering any address. Default is 1 day.')
                             subparsersList['parser_range'].add_argument('-f',           dest='forceUnregister', default=False, action='store_true', required=False, help='Force unregistering the range even if there are recently seen addresses (not needed when using --older or --newer).')
-                        case 'annotate':
+                        if parse_result.subcommand == 'annotate':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
                             subparsersList['parser_range'].add_argument('annotation', type=str, help='Description.')
-                        case 'age':
+                        if parse_result.subcommand == 'age':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
                             subparsersList['parser_range'].add_argument('-m',           dest='lsMAC',         default=False, action='store_true', required=False, help='Show MAC addresses.')
@@ -272,11 +270,11 @@ class CMD_Parsers:
                             subparsersList['parser_range'].add_argument('--hostname',   dest='lsHostname', default=False, action='store_true', required=False, help='Show hostname.')
                             subparsersList['parser_range'].add_argument('-a',           dest='lsAll',       default=False, action="store_true", help='Show all information. Equivalent to -m -l -g -d -n.')
                             subparsersList['parser_range'].add_argument('--all',        dest='lsAll',       default=False, action="store_true", help='Show all information. Equivalent to -m -l -g -d -n.')
-                        case 'usage':
+                        if parse_result.subcommand == 'usage':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
                             
-            parse_result = parser.parse_args(cmd, namespace=parse_result)
+                parse_result = parser.parse_args(cmd, namespace=parse_result)
                     
         except argparse.ArgumentError as e:
             print(str(e))
@@ -644,15 +642,15 @@ def execute_command(ipam:ipamServer, cmd:Parameters):
         return True
 
     # Execute local commands
-    match cmd.command:
-        case 'quit' | 'exit':
+    # DO NOT USE MATCH-CASE FOR COMMANDS AS IT IS NOT COMPATIBLE WITH PYTHON <3.10
+    if cmd.command == 'quit' or cmd.command == 'exit':
             return False
-        case 'help':
+    if cmd.command == 'help':
             parser = global_parsers.init_cli_parser()
             global_parsers.add_commands_to_parser(parser)
             parser.print_help()
             return True
-        case 'enable':
+    if cmd.command == 'enable':
             if cmd.enablelevel == 'all':
                 for op in parameters.enabledOps:
                     parameters.enabledOps[op] = True
@@ -661,7 +659,7 @@ def execute_command(ipam:ipamServer, cmd:Parameters):
                 parameters.enabledOps[cmd.enablelevel] = True
                 print (f'{cmd.enablelevel} enabled.')
             return True
-        case 'disable':
+    if cmd.command == 'disable':
             if cmd.enablelevel == 'all':
                 for op in parameters.enabledOps:
                     parameters.enabledOps[op] = False
@@ -676,10 +674,9 @@ def execute_command(ipam:ipamServer, cmd:Parameters):
             mylogger.error(f"Command ignored: The '{cmd.command} {cmd.subcommand}' command is disabled for security. Enable it with the 'enable {cmd.command}' command.")
             return True
 
-
-    match cmd.command:
-        case "range":
-            execute_range(ipam, cmd)
+    # DO NOT USE MATCH-CASE FOR COMMANDS AS IT IS NOT COMPATIBLE WITH PYTHON <3.10
+    if cmd.command == 'range':
+        execute_range(ipam, cmd)
                     
     # Continue execution
     return True
