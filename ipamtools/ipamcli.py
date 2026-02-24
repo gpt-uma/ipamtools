@@ -5,7 +5,6 @@
 # Initialize logger before importing myESX modules
 from datetime import date, datetime, timedelta, timezone
 
-from email.policy import default
 import logging, sys, os
 from tracemalloc import start
 
@@ -61,13 +60,113 @@ import textwrap
 import ipaddress
 import re
 import datetime
-from typing import List, Optional, Required, Sequence, Tuple
+from typing import List, Optional, Sequence, Dict, Any
 
 if str(os.getenv("OS")) == "Windows_NT":
     mylogger.debug("Windows detected")
     import pyreadline3 as readline # type: ignore
 else:
     import readline
+
+class IPAMcliLanguage:
+    language = {
+                'help': {},
+                'status': {},
+                'exit': {},
+                'quit': {},
+                'enable': {
+                    'unregister': {}, 'register': {}
+                },
+                'disable': {
+                    'unregister': {}, 'register': {}
+                },
+                'range': {
+                    'help': {},
+                    'findbyname': {
+                        '<startingIP>': {
+                            '<endingIP>': {
+                                '<pattern>': {}
+                            }
+                        }
+                    },
+                    'usage': {
+                        '<startingIP>': {
+                            '<endingIP>': {}
+                        }
+                    },
+                    'age': {
+                        '<startingIP>': {
+                            '<endingIP>': {
+                                    '-m': {'**': 1}, '--mac': {'**': 1},
+                                    '-l': {'**': 1}, '--last': {'**': 1},
+                                    '-g': {'**': 1}, '--age': {'**': 1},
+                                    '-d': {'**': 1}, '--description': {'**': 1},
+                                    '-n': {'**': 1}, '--hostname': {'**': 1},
+                                    '-a': {'**': 1}, '--all': {'**': 1},
+                            }
+                        }
+                    },
+                    'annotate': {
+                        '<startingIP>': {
+                            '<endingIP>': {
+                                '<annotation>': {}
+                            }
+                        }
+                    },
+                    'register': {
+                        '<startingIP>': {
+                            '<endingIP>': {}
+                        }
+                    },
+                    'unregister': {
+                        '<startingIP>': {
+                            '<endingIP>': {
+                                    '-o': {'<days>': {'**': 2}},
+                                    '--older': {'<days>': {'**': 2}},
+                                    '-n': {'<days>': {'**': 2}},
+                                    '--newer': {'<days>': {'**': 2}},
+                                    '-a': {'<days>': {'**': 2}},
+                                    '--alive': {'<days>': {'**': 2}},
+                                    '-f': {'**': 1},
+                                    '--force': {'**': 1},
+                            }
+                        }
+                    },
+                    'ls': {
+                        '<startingIP>': {
+                            '<endingIP>': {
+                                    '-o': {'<days>': {'**': 2}},
+                                    '--older': {'<days>': {'**': 2}},
+                                    '-n': {'<days>': {'**': 2}},
+                                    '--newer': {'<days>': {'**': 2}},
+                                    '-m': {'**': 1},
+                                    '--mac': {'**': 1},
+                                    '-l': {'**': 1},
+                                    '--last': {'**': 1},
+                                    '-g': {'**': 1},
+                                    '--age': {'**': 1},
+                                    '-d': {'**': 1},
+                                    '--description': {'**': 1},
+                                    '-n': {'**': 1},
+                                    '--hostname': {'**': 1},
+                                    '-a': {'**': 1},
+                                    '--all': {'**': 1},
+                                    '-s': {'**': 1},
+                                    '--space': {'**': 1},
+                            }
+                        }
+                    },
+                },
+    }
+
+    @classmethod
+    def onelevel(cls) -> List[str]:
+        return list(cls.language.keys())
+
+    @classmethod
+    def twolevel(cls)-> Dict[str, List[str]]:
+        return {cmd: list(cls.language[cmd].keys()) for cmd in cls.language.keys()}
+
 
 # Parameters of the program
 class Parameters(argparse.Namespace):
@@ -80,8 +179,8 @@ class Parameters(argparse.Namespace):
                     'exit':[],
                     'quit':[],
                     'range':['help','ls','findbyname','register','unregister','annotate','age','usage'],
-                    'enable':['unregister'],
-                    'disable':['unregister'],
+                    'enable':['unregister','register'],
+                    'disable':['unregister','register'],
                     }
 
     """Custom Parameters"""
@@ -99,7 +198,7 @@ class Parameters(argparse.Namespace):
         self.rangeStart:str = ''
         self.rangeEnd:str = ''
         self.enableopts:List[str] = []
-        self.enabledOps = { 'unregister': False}
+        self.enabledOps = { 'unregister': False, 'register': False }
 
 ###################################################################
 # Options and command parsers    
@@ -258,18 +357,12 @@ class CMD_Parsers:
                         if parse_result.subcommand == 'age':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
-                            subparsersList['parser_range'].add_argument('-m',           dest='lsMAC',         default=False, action='store_true', required=False, help='Show MAC addresses.')
-                            subparsersList['parser_range'].add_argument('--mac',        dest='lsMAC',      default=False, action='store_true', required=False, help='Show MAC addresses.')
-                            subparsersList['parser_range'].add_argument('-l',           dest='lslastSeen',    default=False, action='store_true', required=False, help='Show date this address was last seen.')
-                            subparsersList['parser_range'].add_argument('--last',       dest='lslastSeen', default=False, action='store_true', required=False, help='Show date this address was last seen.')
-                            subparsersList['parser_range'].add_argument('-g',           dest='lsAge',         default=False, action='store_true', required=False, help='Show time elapsed since last seen.')
-                            subparsersList['parser_range'].add_argument('--age',        dest='lsAge',      default=False, action='store_true', required=False, help='Show time elapsed since last seen.')
-                            subparsersList['parser_range'].add_argument('-d',           dest='lsDescription', default=False, action='store_true', required=False, help='Show description.')
-                            subparsersList['parser_range'].add_argument('--description', dest='lsDescription', default=False, action='store_true', required=False, help='Show description.')
-                            subparsersList['parser_range'].add_argument('-n',   dest='lsHostname', default=False, action='store_true', required=False, help='Show hostname.')
-                            subparsersList['parser_range'].add_argument('--hostname',   dest='lsHostname', default=False, action='store_true', required=False, help='Show hostname.')
-                            subparsersList['parser_range'].add_argument('-a',           dest='lsAll',       default=False, action="store_true", help='Show all information. Equivalent to -m -l -g -d -n.')
-                            subparsersList['parser_range'].add_argument('--all',        dest='lsAll',       default=False, action="store_true", help='Show all information. Equivalent to -m -l -g -d -n.')
+                            subparsersList['parser_range'].add_argument('-m', '--mac',  dest='lsMAC',         default=False, action='store_true', required=False, help='Show MAC addresses.')
+                            subparsersList['parser_range'].add_argument('-l', '--last',   dest='lslastSeen',    default=False, action='store_true', required=False, help='Show date this address was last seen.')
+                            subparsersList['parser_range'].add_argument('-g', '--age',    dest='lsAge',         default=False, action='store_true', required=False, help='Show time elapsed since last seen.')
+                            subparsersList['parser_range'].add_argument('-d', '--description', dest='lsDescription', default=False, action='store_true', required=False, help='Show description.')
+                            subparsersList['parser_range'].add_argument('-n', '--hostname', dest='lsHostname', default=False, action='store_true', required=False, help='Show hostname.')
+                            subparsersList['parser_range'].add_argument('-a', '--all',    dest='lsAll',       default=False, action="store_true", help='Show all information. Equivalent to -m -l -g -d -n.')
                         if parse_result.subcommand == 'usage':
                             subparsersList['parser_range'].add_argument('rangeStart', type=str, help='Starting IP address.')
                             subparsersList['parser_range'].add_argument('rangeEnd', type=str, help='Ending IP address.')
@@ -684,142 +777,78 @@ def execute_command(ipam:ipamServer, cmd:Parameters):
 ###################################################################
 # Autocompleter    
 ###################################################################    
-COMPLETER_DICT:List[Tuple[str, List[str]]] = []
-for cmd in Parameters.subcommands:
-    COMPLETER_DICT.append((cmd, Parameters.subcommands[cmd]))
-
-def lookup(command:str, subcommand:str, dict:List[Tuple[str, List[str]]]):
-    listcmd = [cmd for cmd,_ in COMPLETER_DICT if cmd.startswith(command)]
-    listsubcmd:List[str] = []
-
-    if not listcmd:
-        listcmd = [cmd for cmd,_ in COMPLETER_DICT]
-
-    if len(listcmd) == 1:
-        listsubcmd = [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == listcmd[0] and subcmd.startswith(subcommand) ]
-        if not listsubcmd:
-            listsubcmd = [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == listcmd[0] ]
-
-    return listcmd,listsubcmd
-
 # Autocompletion function
-def completer3(text, state) ->Optional[str]:
-    split_regexp=r'([a-z]+)( *)(\-[a-z]|[a-z]*)( *)'
+def completerV2(text, state) ->Optional[str]:
+    # Get the current line buffer
     buffer:str = readline.get_line_buffer() # type: ignore
-    tokens = buffer.split()
-    parse_res=re.match(split_regexp,buffer)
-    if not parse_res:
-        token1=''
-        token2=''
-        token3=''
-        token4=''
-    else:
-        token1=parse_res.group(1)
-        token2=parse_res.group(2)
-        token3=parse_res.group(3)
-        token4=parse_res.group(4)
+    # Token contains the current command split in tokens separated by spaces. shlex is able to process single and double quotes.
+    tokens = shlex.split(buffer)
 
-    #print(f"COMPLETER: token1='{token1}' token2='{token2}' token3='{token3}' token4='{token4}'")
-    lcmd,lsubcmd = lookup(token1,token3, COMPLETER_DICT)
-    #print(f"COMPLETER: lcmd={lcmd} lsubcmd={lsubcmd}")
+    # If the last character is a space or the buffer is empty, it means that we are starting to write a new token, so we add an empty token at the end of the list to complete it.
+    if buffer =='' or buffer.endswith(' '):
+        tokens.append('')
 
-    matches = []
-    # If no tokens, complete commands
-    if not token1:
-        matches = lcmd
+    # Now we need to determine a couple of things:
+    # - The current token being completed (the one indicated by argument state)
+    # - The dictionary used to complete the current token, which depends on the previous tokens. 
+    
+    # We will iterate over state starting with the root dictionary and the first token.
+    # If the current token allows us to complete the token (it is unique) and choose the next level
+    # in the dictionary, we push the subdictionary into the stack and continue iterating with the next token.
+    # If there are several options or no option at all, we return all possible completions or None.
 
-    # If one token and no space after it
-    elif token1 and not token2:
-        # Check if first token is already a word in dictionary or complete
-        if len(lcmd) == 1 and token1 == lcmd[0]:
-            # Command is completed and we can complete space and start completing next level
-            readline.insert_text(' ') # type: ignore
-            matches = []
-        else:
-            matches = lcmd
+    # Entries with '**' are special entries that are not used for completion. They indicate that we have completed an 
+    # expression and we should go back N levels. The value of '**' is the number of levels to go back in the stack when we 
+    # have completed the current token. This allows us to complete commands with variable number of arguments and to return 
+    # to upper levels when we have completed an expression.
 
-    # Now complete token3
-    elif token1 and token2:
-        if not token3:
-            matches = [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == token1]
-        elif token3 and not token4:
-            # Check if second token is already a word in dictionary or complete
-            if [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == token1 and subcmd == token3 ]:
-                # Command is completed and we can complete space and start completing next level
+    # Dictionary stack allows to descend into expressions and return to upper levels when an expression is completed.
+    # The last element is the dictionary of the current level, and the previous elements are the dictionaries of the upper levels.
+    dictionary_stack:List[Dict[str, Any]] = []
+    # Start with root dictionary of the CLI language
+    dictionary_stack.append(IPAMcliLanguage.language)
+    # This is the index of the current token being completed
+    token_index = 0
+
+    # Iterate until the dictionary has not entries (except '**') is empty or we have no more tokens to process
+    while dictionary_stack[-1] and token_index < len(tokens):
+        # Check if we only have a special entry '**' in the current dictionary, which means that we have completed an expression and we should go back N levels in the stack
+        if '**' in dictionary_stack[-1] and len(dictionary_stack[-1]) == 1:
+            # We have completed an expression, so we go back N levels in the stack
+            levels_to_go_back = dictionary_stack[-1]['**']
+            for _ in range(levels_to_go_back):
+                if len(dictionary_stack) > 1:
+                    dictionary_stack.pop()
+                else:
+                    break
+
+        # This is the current token being completed
+        current_token = tokens[token_index]
+        # Look for tokens in the current dictionary that start with the current token
+        matches = [key for key in dictionary_stack[-1] if key != '**' and (key.startswith(current_token) or (key.startswith('<') and key.endswith('>')))]
+
+        # If there is only one match and it is the same as the current token (or it is a placeholder and the current token is not empty), we have a complete match and we can go to the next level of the dictionary
+        if len(matches) == 1 and (matches[0] == current_token or (current_token and matches[0].startswith('<') and matches[0].endswith('>'))):
+            dictionary_stack.append(dictionary_stack[-1][matches[0]])
+            token_index += 1
+            # If we are at the end of the tokens, we can insert an extra space to start completing the next token
+            if token_index == len(tokens):
                 readline.insert_text(' ') # type: ignore
-                matches = []
-            else:
-                matches = [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == token1 and subcmd.startswith(text) ]
-                if not matches:
-                    matches = [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == token1]
-                
-        
-    # Return the match at the current state
-    if state < len(matches):
-        #print(f"RETURN {matches[state]}")
-        return matches[state]
-    else:
-        #print(f"RETURN NONE")
-        return None
-
-# Autocompletion function
-def completer(text, state) ->Optional[str]:
-    split_regexp=r'([a-z]+)( *)([a-z-*.]*)( *)'
-    buffer:str = readline.get_line_buffer() # type: ignore
-    tokens = buffer.split()
-    parse_res=re.match(split_regexp,buffer)
-    if not parse_res:
-        token1=''
-        token2=''
-        token3=''
-        token4=''
-    else:
-        token1=parse_res.group(1)
-        token2=parse_res.group(2)
-        token3=parse_res.group(3)
-        token4=parse_res.group(4)
-
-    #print(f"COMPLETER: token1='{token1}' token2='{token2}' token3='{token3}' token4='{token4}'")
-    # If no tokens, complete commands
-    if not token1:
-        matches = [cmd for cmd,_ in COMPLETER_DICT if cmd.startswith(text)]
-
-    # If one token and no space after it
-    elif token1 and not token2:
-        # Check if first token is already a word in dictionary or complete
-        if [cmd for cmd,_ in COMPLETER_DICT if cmd==token1]:
-            # Command is completed and we can complete space and start completing next level
-            readline.insert_text(' ') # type: ignore
-            matches = []
+                return None
+            continue
         else:
-            matches = [cmd for cmd,_ in COMPLETER_DICT if cmd.startswith(text)]
+            # We have multiple matches or no matches, so we return the possible completions for the current token
             if not matches:
-                matches = [cmd for cmd,_ in COMPLETER_DICT]
-
-    # Now complete token3
-    elif token1 and token2:
-        if not token3:
-            matches = [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == token1]
-        elif token3 and not token4:
-            # Check if second token is already a word in dictionary or complete
-            if [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == token1 and subcmd == token3 ]:
-                # Command is completed and we can complete space and start completing next level
-                readline.insert_text(' ') # type: ignore
-                matches = []
+                # If we don't have any matches, we use the whole dictionary of this level as possible completions
+                matches = list(dictionary_stack[-1].keys())
+            # Now we return the match at the current state
+            if state < len(matches):
+                return matches[state]
             else:
-                matches = [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == token1 and subcmd.startswith(text) ]
-                if not matches:
-                    matches = [subcmd for cmd,subdict in COMPLETER_DICT for subcmd in subdict if cmd == token1]
-                
-        
-    # Return the match at the current state
-    if state < len(matches): # type: ignore
-        #print(f"RETURN {matches[state]}")
-        return matches[state] # type: ignore
-    else:
-        #print(f"RETURN NONE")
-        return None
-
+                    return None
+    
+    # We have run out of tokens or the dictionary is empty, so we can't return any more completions
+    return None
 
 ###################################################################
 # Main program    
@@ -877,7 +906,9 @@ def main():
         try:
             # Configure line edition
             readline.read_history_file(parameters.clihistory) # type: ignore
-            readline.set_completer(completer) # type: ignore
+            readline.set_completer(completerV2) # type: ignore
+            # Eliminate '-' from delimiters to be able to autocomplete commands with '-' in their name
+            readline.set_completer_delims(readline.get_completer_delims().replace('-',''))
             readline.parse_and_bind("tab: complete") # type: ignore
 
         except Exception:
